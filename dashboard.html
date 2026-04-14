@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UT - Pro CRM Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
+  <style>
+    body { background-color: #f0f4f8; font-family: sans-serif;}
+    .navbar { background-color: #1565c0 !important; }
+    .card { border: none; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    .theme-text { color: #1565c0 !important; }
+    .pipeline-stage { padding: 10px; background: #e3f2fd; border-radius: 6px; margin-bottom: 10px; border-left: 4px solid #1565c0; }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold text-white text-decoration-none d-flex align-items-center" href="#">
+        <img src="https://zdifzvpjmmmsfitjsraw.supabase.co/storage/v1/object/sign/Logo/UT%20Logo.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84MjVmNmZkNy1mZTM3LTQzNWItOWFhMi1jZGQ4ZjY5NWM0NGYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJMb2dvL1VUIExvZ28ucG5nIiwiaWF0IjoxNzc2MTQ5OTU1LCJleHAiOjIwOTE1MDk5NTV9.x552voP79T7mPkr4bCY8sWfmVKTecasivkFHEFOt-t4" alt="UT Logo" style="height: 45px; margin-right: 15px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+        <div style="line-height: 1.2;">
+          Universal Tractor Co., Ltd.<br>
+          <small style="font-size: 0.8rem; font-weight: 400; letter-spacing: 0.5px;">Customer Relationship Management System</small>
+        </div>
+      </a>
+      <div>
+        <a href="index.html" class="btn btn-outline-light btn-sm mx-1">Directory</a>
+        <a href="portal.html" class="btn btn-outline-light btn-sm mx-1">Interactions & Leads</a>
+        <a href="dashboard.html" class="btn btn-light btn-sm mx-1 fw-bold theme-text">Dashboard</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid px-4 pb-5">
+    <div class="row g-4">
+       <div class="col-md-5">
+          <div class="card p-4 border-top border-4 h-100" style="border-color: #1565c0 !important;">
+             <h5 class="fw-bold mb-4 theme-text"><i class="bi bi-funnel-fill"></i> Global Sales Pipeline</h5>
+             <div id="pipelineContainer">Loading pipeline...</div>
+
+             <h5 class="fw-bold mt-5 mb-3 text-danger"><i class="bi bi-bell-fill"></i> Upcoming Follow-ups (To-Do)</h5>
+             <div class="list-group" id="taskContainer" style="max-height: 350px; overflow-y: auto;">
+                Loading tasks...
+             </div>
+          </div>
+       </div>
+
+       <div class="col-md-7">
+          <div class="card p-4 border-top border-4 border-success h-100">
+             <div class="row g-2 mb-4 bg-light p-3 rounded border">
+               <div class="col-md-8">
+                 <label class="fw-bold text-muted small">Select Customer</label>
+                 <input list="custList" id="filterCust" class="form-control border-primary" placeholder="Type Name or ID" onchange="resetDashFilters()">
+                 <datalist id="custList"></datalist>
+               </div>
+             </div>
+
+             <div id="filteredDetailView" style="display: none;">
+               <div class="mb-4 p-3 bg-light rounded border-start border-4 border-success">
+                  <div class="d-flex justify-content-between align-items-start">
+                     <h4 id="infoName" class="fw-bold mb-1 theme-text"></h4>
+                     <span id="infoTier" class="badge"></span>
+                  </div>
+                  <div class="text-secondary small mt-2"><strong>Industry:</strong> <span id="infoInd"></span> | <strong>Contact:</strong> <span id="infoPhone"></span></div>
+               </div>
+
+               <div class="d-flex justify-content-between align-items-center mb-2">
+                 <h6 class="text-secondary fw-bold mb-0">Customer Timeline</h6>
+                 <button class="btn btn-success btn-sm fw-bold shadow-sm" onclick="exportToExcel()">
+                    <i class="bi bi-file-earmark-excel"></i> Export Excel
+                 </button>
+               </div>
+               
+               <div class="row g-2 mb-3 bg-white p-2 rounded border border-light shadow-sm">
+                  <div class="col-md-4"><small class="fw-bold text-muted">Start Date</small><input type="date" id="dashStartDate" class="form-control form-control-sm" onchange="renderIndividualView()"></div>
+                  <div class="col-md-4"><small class="fw-bold text-muted">End Date</small><input type="date" id="dashEndDate" class="form-control form-control-sm" onchange="renderIndividualView()"></div>
+                  <div class="col-md-4"><small class="fw-bold text-muted">Type Filter</small><select id="dashLogType" class="form-select form-select-sm" onchange="renderIndividualView()"><option value="">All Types</option></select></div>
+               </div>
+
+               <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                 <table class="table table-hover table-bordered table-sm align-middle text-center" id="reportTable">
+                   <thead class="table-dark sticky-top">
+                     <tr><th>Date</th><th>Type / Stage</th><th>Details</th><th>Status</th><th>Est. Amt</th></tr>
+                   </thead>
+                   <tbody id="reportBody"></tbody>
+                 </table>
+               </div>
+             </div> 
+
+             <div id="defaultSummaryView" class="text-center text-muted mt-5">
+                <i class="bi bi-person-bounding-box" style="font-size: 3rem;"></i>
+                <h6 class="mt-3">Select a customer to view their timeline</h6>
+             </div>
+          </div>
+       </div>
+    </div>
+  </div>
+
+  <script src="supabase-config.js"></script>
+
+  <script>
+    let cData = []; let lData = [];
+    let currentFilteredLogs = []; // Global variable to store currently filtered logs for export
+
+    window.onload = async function() {
+      try {
+        const [cRes, lRes] = await Promise.all([
+           supabase.from('crm_customers').select('*'),
+           supabase.from('crm_logs').select('*').order('created_at', { ascending: false })
+        ]);
+        cData = cRes.data || []; lData = lRes.data || [];
+
+        document.getElementById('custList').innerHTML = cData.map(c => `<option value="${c.id}">${c.id} - ${c.company_name}</option>`).join('');
+        
+        let uniqueTypes = [...new Set(lData.map(l => l.log_type))].filter(Boolean);
+        document.getElementById('dashLogType').innerHTML = '<option value="">All Interaction Types</option>' + uniqueTypes.map(t => `<option value="${t}">${t}</option>`).join('');
+
+        renderGlobalMetrics();
+      } catch (err) { Swal.fire("Error", err.message, "error"); }
+    }
+
+    function renderGlobalMetrics() {
+       let stages = {};
+       lData.filter(l => l.lead_stage && l.status === 'Open').forEach(l => {
+          let s = l.lead_stage;
+          if(!stages[s]) stages[s] = { count: 0, amount: 0 };
+          stages[s].count++;
+          stages[s].amount += (Number(l.amount) || 0);
+       });
+
+       let pipeHtml = '';
+       Object.keys(stages).sort().forEach(s => {
+          let amtStr = stages[s].amount > 0 ? `<br><small class="text-success fw-bold">${stages[s].amount.toLocaleString()} MMK</small>` : '';
+          pipeHtml += `<div class="pipeline-stage d-flex justify-content-between align-items-center">
+             <div><span class="fw-bold">${s}</span><br><small class="text-muted">${stages[s].count} active leads</small></div>
+             <div class="text-end">${amtStr}</div>
+          </div>`;
+       });
+       document.getElementById('pipelineContainer').innerHTML = pipeHtml === '' ? '<small class="text-muted">No active leads in pipeline.</small>' : pipeHtml;
+
+       let today = new Date().toISOString().split('T')[0];
+       let tasks = lData.filter(l => l.status === 'Open' && l.next_followup_date && l.next_followup_task);
+       tasks.sort((a,b) => new Date(a.next_followup_date) - new Date(b.next_followup_date));
+       
+       let taskHtml = '';
+       tasks.forEach(t => {
+          let isOverdue = t.next_followup_date < today;
+          let dateColor = isOverdue ? 'text-danger' : (t.next_followup_date === today ? 'text-warning text-dark' : 'text-primary');
+          let custName = cData.find(c => c.id === t.customer_id)?.company_name || t.customer_id;
+          
+          taskHtml += `<div class="list-group-item list-group-item-action">
+             <div class="d-flex w-100 justify-content-between">
+                <h6 class="mb-1 fw-bold ${dateColor}"><i class="bi bi-calendar"></i> ${t.next_followup_date} ${isOverdue ? '(Overdue)' : ''}</h6>
+                <small class="text-muted">${t.assigned_to || 'Unassigned'}</small>
+             </div>
+             <p class="mb-1 small fw-bold">${t.next_followup_task}</p>
+             <small class="text-muted">Customer: ${custName} | Ref: ${t.title}</small>
+          </div>`;
+       });
+       document.getElementById('taskContainer').innerHTML = taskHtml === '' ? '<div class="text-center p-3 text-muted">No pending tasks. Great job!</div>' : taskHtml;
+    }
+
+    function resetDashFilters() {
+      document.getElementById('dashStartDate').value = '';
+      document.getElementById('dashEndDate').value = '';
+      document.getElementById('dashLogType').value = '';
+      renderIndividualView();
+    }
+
+    function renderIndividualView() {
+      const fId = document.getElementById('filterCust').value.toUpperCase().trim();
+      
+      if(fId === '') {
+        document.getElementById('defaultSummaryView').style.display = 'block'; document.getElementById('filteredDetailView').style.display = 'none';
+        currentFilteredLogs = [];
+      } else {
+        document.getElementById('defaultSummaryView').style.display = 'none'; document.getElementById('filteredDetailView').style.display = 'block';
+        
+        let cust = cData.find(c => c.id.toUpperCase() === fId);
+        if(!cust) return;
+
+        document.getElementById('infoName').innerText = cust.company_name;
+        document.getElementById('infoInd').innerText = cust.industry || '-';
+        document.getElementById('infoPhone').innerText = cust.phone || '-';
+        
+        let tEl = document.getElementById('infoTier');
+        tEl.innerText = cust.tier || 'Standard';
+        tEl.className = cust.tier === 'VIP' ? 'badge bg-warning text-dark' : 'badge bg-secondary';
+
+        let sDate = document.getElementById('dashStartDate').value;
+        let eDate = document.getElementById('dashEndDate').value;
+        let fType = document.getElementById('dashLogType').value;
+
+        currentFilteredLogs = lData.filter(l => {
+            if(l.customer_id.toUpperCase() !== fId) return false;
+            let logDate = l.created_at.split('T')[0];
+            let matchStart = sDate ? logDate >= sDate : true;
+            let matchEnd = eDate ? logDate <= eDate : true;
+            let matchType = fType ? l.log_type === fType : true;
+            return matchStart && matchEnd && matchType;
+        });
+
+        let tbody = '';
+        currentFilteredLogs.forEach(l => {
+           let type = l.log_type || '';
+           let bColor = type.includes('Lead') ? 'bg-success' : 'bg-primary';
+           let sColor = l.status === 'Open' ? 'text-warning' : (l.status === 'Closed' ? 'text-success' : 'text-danger');
+           let stageHtml = l.lead_stage ? `<br><small class="text-success">${l.lead_stage}</small>` : '';
+
+           tbody += `<tr>
+                <td class="small text-nowrap">${l.date_str}</td>
+                <td><span class="badge ${bColor}">${type}</span>${stageHtml}</td>
+                <td class="text-start small">
+                  <span class="fw-bold">${l.title}</span>
+                  <div class="text-muted mt-1" style="font-size:0.75rem;">${l.description || '-'} <span class="text-info fst-italic">(${l.assigned_to || 'Unassigned'})</span></div>
+                </td>
+                <td class="small fw-bold ${sColor}">${l.status}</td>
+                <td class="small text-success text-end fw-bold">${l.amount > 0 ? Number(l.amount).toLocaleString() : '-'}</td>
+           </tr>`;
+        });
+        document.getElementById('reportBody').innerHTML = tbody === '' ? '<tr><td colspan="5" class="text-center py-4 text-muted">No interactions match the selected filters.</td></tr>' : tbody;
+      }
+    }
+
+    // NEW: Function to Export Current Filtered Table to Excel
+    function exportToExcel() {
+        if (currentFilteredLogs.length === 0) {
+            return Swal.fire("No Data", "Export လုပ်ရန် ဒေတာမရှိပါ။", "info");
+        }
+
+        const custName = document.getElementById('infoName').innerText;
+        const fileName = `CRM_Report_${custName}_${new Date().toLocaleDateString()}.xlsx`;
+
+        // Format data for Excel
+        const excelData = currentFilteredLogs.map(l => ({
+            "Date": l.date_str,
+            "Type": l.log_type,
+            "Stage": l.lead_stage || "-",
+            "Title": l.title,
+            "Description": l.description || "-",
+            "Staff": l.assigned_to || "Unassigned",
+            "Status": l.status,
+            "Amount (MMK)": l.amount || 0
+        }));
+
+        // Create sheet and workbook
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Timeline");
+
+        // Set column widths for better readability
+        worksheet["!cols"] = [
+            { wch: 12 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 10 }, { wch: 15 }
+        ];
+
+        // Trigger Download
+        XLSX.writeFile(workbook, fileName);
+    }
+  </script>
+</body>
+</html>
