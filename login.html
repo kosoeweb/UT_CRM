@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UT - CRM Login</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { background-color: #f0f4f8; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; }
+    .login-card { max-width: 400px; width: 100%; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: #fff; border-top: 5px solid #1565c0; }
+    .theme-bg { background-color: #1565c0 !important; color: white; }
+  </style>
+</head>
+<body>
+
+  <div class="login-card text-center">
+    <img src="https://zdifzvpjmmmsfitjsraw.supabase.co/storage/v1/object/sign/Logo/UT%20Logo.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV84MjVmNmZkNy1mZTM3LTQzNWItOWFhMi1jZGQ4ZjY5NWM0NGYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJMb2dvL1VUIExvZ28ucG5nIiwiaWF0IjoxNzc2MTQ5OTU1LCJleHAiOjIwOTE1MDk5NTV9.x552voP79T7mPkr4bCY8sWfmVKTecasivkFHEFOt-t4" alt="UT Logo" style="height: 60px; border-radius: 6px; margin-bottom: 20px;">
+    <h5 class="fw-bold text-dark mb-4">CRM System Login</h5>
+    
+    <form onsubmit="handleLogin(event)">
+      <div class="mb-3 text-start">
+        <label class="small fw-bold text-muted">Email Address</label>
+        <input type="email" id="email" class="form-control border-primary" required>
+      </div>
+      <div class="mb-4 text-start">
+        <label class="small fw-bold text-muted">Password</label>
+        <input type="password" id="password" class="form-control border-primary" required>
+      </div>
+      <button type="submit" class="btn theme-bg w-100 fw-bold" id="btnLogin">Log In</button>
+    </form>
+  </div>
+
+  <script src="supabase-config.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    async function handleLogin(e) {
+      e.preventDefault();
+      let btn = document.getElementById('btnLogin');
+      btn.disabled = true; btn.innerText = "Checking...";
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // Login အောင်မြင်ပါက index.html သို့ ပို့မည် (auth.js မှ တာဝန်ယူသွားမည်)
+        window.location.href = 'index.html';
+      } catch (err) {
+        Swal.fire('Login Failed', err.message, 'error');
+        btn.disabled = false; btn.innerText = "Log In";
+      }
+    }
+  </script>
+</body>
+</html>
